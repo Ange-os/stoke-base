@@ -1,0 +1,16 @@
+*.pyc
+__pycache__/
+*.log
+*.db
+*.sqlite3
+.env
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+.DS_Store
+.md files
+setup_database.py
+create_db.sql   
