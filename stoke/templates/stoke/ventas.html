@@ -51,6 +51,24 @@
         font-size: 2rem;
         text-align: center;
     }
+    .cantidad-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .cantidad-input {
+        width: 60px;
+        text-align: center;
+        font-weight: bold;
+    }
+    .btn-cantidad {
+        width: 35px;
+        height: 35px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 </style>
 {% endblock %}
 
@@ -295,7 +313,7 @@
     // Agregar producto al carrito
     function agregarAlCarrito(productoId, nombre, precio, stock) {
         if (productoId && stock !== undefined && stock <= 0) {
-            alert('No hay stock disponible');
+            showNotification('No hay stock disponible', 'warning');
             return;
         }
         
@@ -304,10 +322,11 @@
             const itemExistente = carrito.find(item => item.producto_id === productoId);
             if (itemExistente) {
                 if (itemExistente.cantidad >= stock) {
-                    alert('No hay suficiente stock');
+                    showNotification('No hay suficiente stock disponible', 'warning');
                     return;
                 }
                 itemExistente.cantidad++;
+                showNotification(`${nombre} - Cantidad actualizada`, 'success', 2000);
             } else {
                 carrito.push({
                     producto_id: productoId,
@@ -328,6 +347,7 @@
                 stock: null,
                 es_manual: true
             });
+            showNotification('Venta manual agregada', 'info', 2000);
         }
         
         actualizarCarrito();
@@ -341,7 +361,7 @@
         const monto = parseFloat(document.getElementById('manual-monto').value);
         
         if (!monto || monto <= 0) {
-            alert('Ingresa un monto válido');
+            showNotification('Ingresa un monto válido', 'warning');
             return;
         }
         
@@ -369,16 +389,33 @@
             carritoItems.innerHTML = carrito.map((item, index) => `
                 <div class="carrito-item">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>
+                        <div class="flex-grow-1">
                             <strong>${item.nombre}</strong>
                             ${item.es_manual ? '<span class="badge bg-info ms-2">Manual</span>' : ''}
                             <br>
-                            <small class="text-muted">$${item.precio.toFixed(2)}${item.cantidad > 1 ? ` x ${item.cantidad}` : ''}</small>
+                            <small class="text-muted">$${item.precio.toFixed(2)} c/u</small>
                         </div>
-                        <div class="text-end">
-                            <strong>$${(item.precio * item.cantidad).toFixed(2)}</strong>
-                            <br>
-                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarDelCarrito(${index})">
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- Controles de cantidad -->
+                            <div class="input-group" style="width: 120px;">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="cambiarCantidad(${index}, -1)">
+                                    <i class="bi bi-dash"></i>
+                                </button>
+                                <input type="number" 
+                                       class="form-control form-control-sm text-center" 
+                                       value="${item.cantidad}" 
+                                       min="1" 
+                                       max="${item.stock || 999}"
+                                       onchange="cambiarCantidadInput(${index}, this.value)"
+                                       style="max-width: 50px;">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="cambiarCantidad(${index}, 1)">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                            <div class="text-end" style="min-width: 80px;">
+                                <strong>$${(item.precio * item.cantidad).toFixed(2)}</strong>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarDelCarrito(${index})" title="Eliminar">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -397,10 +434,56 @@
         actualizarVuelto();
     }
     
+    // Cambiar cantidad de un item
+    function cambiarCantidad(index, cambio) {
+        const item = carrito[index];
+        const nuevaCantidad = item.cantidad + cambio;
+        
+        if (nuevaCantidad < 1) {
+            showNotification('La cantidad mínima es 1', 'warning');
+            return;
+        }
+        
+        // Validar stock si es producto real
+        if (item.producto_id && item.stock !== null && nuevaCantidad > item.stock) {
+            showNotification(`Stock disponible: ${item.stock} unidades`, 'warning');
+            return;
+        }
+        
+        item.cantidad = nuevaCantidad;
+        actualizarCarrito();
+    }
+    
+    // Cambiar cantidad desde input
+    function cambiarCantidadInput(index, valor) {
+        const item = carrito[index];
+        const nuevaCantidad = parseInt(valor) || 1;
+        
+        if (nuevaCantidad < 1) {
+            item.cantidad = 1;
+            actualizarCarrito();
+            showNotification('La cantidad mínima es 1', 'warning');
+            return;
+        }
+        
+        // Validar stock si es producto real
+        if (item.producto_id && item.stock !== null && nuevaCantidad > item.stock) {
+            item.cantidad = item.stock;
+            actualizarCarrito();
+            showNotification(`Stock disponible: ${item.stock} unidades`, 'warning');
+            return;
+        }
+        
+        item.cantidad = nuevaCantidad;
+        actualizarCarrito();
+    }
+    
     // Eliminar del carrito
     function eliminarDelCarrito(index) {
+        const item = carrito[index];
         carrito.splice(index, 1);
         actualizarCarrito();
+        showNotification(`${item.nombre} eliminado del carrito`, 'info', 2000);
     }
     
     // Actualizar vuelto
@@ -430,22 +513,26 @@
     // Realizar venta
     function realizarVenta() {
         if (carrito.length === 0) {
-            alert('El carrito está vacío');
+            showNotification('El carrito está vacío', 'warning');
             return;
         }
         
         const metodoPago = document.querySelector('input[name="metodo-pago"]:checked').value;
-        const montoRecibido = metodoPago === 'efectivo' ? parseFloat(montoRecibido.value) : null;
+        const montoRecibidoValor = metodoPago === 'efectivo' ? parseFloat(montoRecibido.value) || 0 : null;
         
-        if (metodoPago === 'efectivo' && (!montoRecibido || montoRecibido < total)) {
-            alert('El monto recibido debe ser mayor o igual al total');
+        if (metodoPago === 'efectivo' && (!montoRecibidoValor || montoRecibidoValor < total)) {
+            showNotification('El monto recibido debe ser mayor o igual al total', 'warning');
             return;
         }
+        
+        // Deshabilitar botón mientras procesa
+        btnVenta.disabled = true;
+        btnVenta.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
         
         const datos = {
             metodo_pago: metodoPago,
             total: total,
-            monto_recibido: montoRecibido,
+            monto_recibido: montoRecibidoValor,
             recargo_tarjeta: 0, // Por ahora 0, se puede agregar después
             detalles: carrito
                 .filter(item => item.producto_id) // Solo productos reales
@@ -481,17 +568,30 @@
             },
             body: JSON.stringify(datos)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
+            return response.json();
+        })
         .then(data => {
+            btnVenta.disabled = false;
+            btnVenta.innerHTML = '<i class="bi bi-check-circle"></i> VENTA';
+            
             if (data.success) {
-                alert(`Venta realizada exitosamente!\nVuelto: $${data.vuelto.toFixed(2)}`);
+                const vueltoMsg = metodoPago === 'efectivo' && data.vuelto > 0 
+                    ? ` Vuelto: $${data.vuelto.toFixed(2)}` 
+                    : '';
+                showNotification(`Venta realizada exitosamente!${vueltoMsg}`, 'success', 4000);
                 limpiarCarrito();
             } else {
-                alert('Error: ' + data.error);
+                showNotification('Error: ' + (data.error || 'Error desconocido'), 'error', 5000);
             }
         })
         .catch(error => {
-            alert('Error al realizar la venta');
+            btnVenta.disabled = false;
+            btnVenta.innerHTML = '<i class="bi bi-check-circle"></i> VENTA';
+            showNotification('Error al realizar la venta. Intenta de nuevo.', 'error', 5000);
             console.error(error);
         });
     }

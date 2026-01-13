@@ -16,7 +16,8 @@ from .forms import VentaForm, CierreCajaForm, CargaCSVForm
 @login_required
 def ventas(request):
     """Interfaz de ventas tipo calculadora"""
-    productos = Producto.objects.filter(activo=True).order_by('nombre')
+    # Optimizado: solo cargar productos activos, sin prefetch innecesario
+    productos = Producto.objects.filter(activo=True).select_related('categoria').order_by('nombre')[:50]  # Limitar a 50 para mejor rendimiento
     
     if request.method == 'POST':
         try:
@@ -32,18 +33,35 @@ def ventas(request):
                 observaciones='Venta manual' if data.get('es_manual') else ''
             )
             
-            # Crear detalles de venta (solo si hay productos reales)
+            # Crear detalles de venta (solo si hay productos reales) - Optimizado con bulk_create
             detalles = data.get('detalles', [])
-            for detalle_data in detalles:
-                if detalle_data.get('producto_id'):
-                    producto = get_object_or_404(Producto, id=detalle_data['producto_id'])
-                    DetalleVenta.objects.create(
-                        venta=venta,
-                        producto=producto,
-                        cantidad=detalle_data['cantidad'],
-                        precio_unitario=producto.precio,
-                        subtotal=producto.precio * detalle_data['cantidad']
-                    )
+            if detalles:
+                # Obtener todos los productos de una vez
+                producto_ids = [d['producto_id'] for d in detalles if d.get('producto_id')]
+                productos_dict = {p.id: p for p in Producto.objects.filter(id__in=producto_ids)}
+                
+                # Crear todos los detalles de una vez
+                detalles_venta = []
+                for detalle_data in detalles:
+                    producto_id = detalle_data.get('producto_id')
+                    if producto_id and producto_id in productos_dict:
+                        producto = productos_dict[producto_id]
+                        detalles_venta.append(DetalleVenta(
+                            venta=venta,
+                            producto=producto,
+                            cantidad=detalle_data['cantidad'],
+                            precio_unitario=producto.precio,
+                            subtotal=producto.precio * detalle_data['cantidad']
+                        ))
+                
+                # Crear todos los detalles de una vez (más rápido)
+                if detalles_venta:
+                    DetalleVenta.objects.bulk_create(detalles_venta)
+                    
+                    # Actualizar stock de todos los productos de una vez
+                    for detalle_venta in detalles_venta:
+                        detalle_venta.producto.stock -= detalle_venta.cantidad
+                    Producto.objects.bulk_update([d.producto for d in detalles_venta], ['stock'])
             # Si es venta manual sin productos, la venta se guarda sin detalles
             
             return JsonResponse({
