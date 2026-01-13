@@ -1,0 +1,25 @@
+# Configuración automática de finales de línea
+* text=auto
+
+# Archivos Python - usar LF (Unix)
+*.py text eol=lf
+
+# Archivos de configuración - usar LF
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Archivos de Windows - usar CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Archivos binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
