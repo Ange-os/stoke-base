@@ -1,0 +1,130 @@
+{% extends 'stoke/base.html' %}
+
+{% block title %}Cargar Productos desde CSV{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4><i class="bi bi-upload"></i> Cargar Productos desde CSV</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h5><i class="bi bi-info-circle"></i> Formato del CSV</h5>
+                    <p>El archivo CSV debe tener las siguientes columnas:</p>
+                    <ul>
+                        <li><strong>nombre</strong> (requerido): Nombre del producto</li>
+                        <li><strong>codigo_barras</strong> (opcional): Código de barras único</li>
+                        <li><strong>precio</strong> (requerido): Precio del producto</li>
+                        <li><strong>stock</strong> (opcional): Cantidad en stock (default: 0)</li>
+                        <li><strong>categoria</strong> (opcional): Nombre de la categoría</li>
+                        <li><strong>tamaño</strong> (opcional): Tamaño o presentación</li>
+                    </ul>
+                    <p class="mb-0"><strong>Ejemplo:</strong></p>
+                    <code>
+                        nombre,codigo_barras,precio,stock,categoria,tamaño<br>
+                        Coca Cola,7790310981234,500.00,50,Bebidas,500ml<br>
+                        Snickers,7891234567890,350.00,30,Golosinas,50g
+                    </code>
+                </div>
+                
+                <form method="post" enctype="multipart/form-data" id="form-csv">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.archivo_csv.id_for_label }}" class="form-label">
+                            {{ form.archivo_csv.label }}
+                        </label>
+                        <div class="input-group">
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="{{ form.archivo_csv.id_for_label }}"
+                                   name="{{ form.archivo_csv.name }}"
+                                   accept=".csv"
+                                   required>
+                        </div>
+                        <small class="form-text text-muted">{{ form.archivo_csv.help_text }}</small>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-upload"></i> Cargar Productos
+                        </button>
+                        <a href="{% url 'admin:stoke_producto_add' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-plus-circle"></i> Agregar Producto Manualmente
+                        </a>
+                    </div>
+                </form>
+                
+                {% if errores %}
+                <div class="alert alert-warning mt-3">
+                    <h5><i class="bi bi-exclamation-triangle"></i> Errores encontrados:</h5>
+                    <ul class="mb-0">
+                        {% for error in errores %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="bi bi-download"></i> Descargar Plantilla CSV</h5>
+            </div>
+            <div class="card-body">
+                <p>Descarga esta plantilla para ver el formato correcto:</p>
+                <a href="data:text/csv;charset=utf-8,nombre%2Ccodigo_barras%2Cprecio%2Cstock%2Ccategoria%2Ctama%C3%B1o%0ACoca%20Cola%2C7790310981234%2C500.00%2C50%2CBebidas%2C500ml%0ASnickers%2C7891234567890%2C350.00%2C30%2CGolosinas%2C50g%0APapas%20Lays%2C%2C450.00%2C25%2CSnacks%2C150g" 
+                   download="plantilla_productos.csv" 
+                   class="btn btn-outline-primary">
+                    <i class="bi bi-download"></i> Descargar Plantilla
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Drag and drop
+    const form = document.getElementById('form-csv');
+    const fileInput = document.getElementById('{{ form.archivo_csv.id_for_label }}');
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        form.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        form.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        form.addEventListener(eventName, unhighlight, false);
+    });
+    
+    function highlight(e) {
+        form.classList.add('border-primary', 'border-2');
+    }
+    
+    function unhighlight(e) {
+        form.classList.remove('border-primary', 'border-2');
+    }
+    
+    form.addEventListener('drop', handleDrop, false);
+    
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            fileInput.files = files;
+        }
+    }
+</script>
+{% endblock %}

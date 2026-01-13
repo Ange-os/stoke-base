@@ -11,6 +11,8 @@ env/
 dist/
 build/
 .DS_Store
-.md files
 setup_database.py
-create_db.sql   
+create_db.sql
+README.md
+INSTRUCCIONES.md
+SUPABASE_SETUP.md

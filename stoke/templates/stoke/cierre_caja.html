@@ -1,0 +1,132 @@
+{% extends 'stoke/base.html' %}
+
+{% block title %}Cierre de Caja{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4><i class="bi bi-cash-coin"></i> Cierre de Caja - {{ cierre.fecha|date:"d/m/Y" }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Dinero Inicial</label>
+                            {{ form.dinero_inicial }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Dinero Final</label>
+                            {{ form.dinero_final }}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h5>Resumen del Día</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Total Ventas:</th>
+                                    <td class="text-end"><strong>${{ cierre.total_ventas|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <th>Cantidad de Ventas:</th>
+                                    <td class="text-end"><strong>{{ cierre.cantidad_ventas }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Diferencia:</th>
+                                    <td class="text-end">
+                                        <strong class="{% if cierre.diferencia >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            ${{ cierre.diferencia|floatformat:2 }}
+                                        </strong>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h5>Totales por Método de Pago</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-striped">
+                                <tr>
+                                    <td><i class="bi bi-cash"></i> Efectivo:</td>
+                                    <td class="text-end"><strong>${{ cierre.total_efectivo|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="bi bi-credit-card"></i> Tarjeta Débito:</td>
+                                    <td class="text-end"><strong>${{ cierre.total_tarjeta_debito|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="bi bi-credit-card-2-front"></i> Tarjeta Crédito:</td>
+                                    <td class="text-end"><strong>${{ cierre.total_tarjeta_credito|floatformat:2 }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-striped">
+                                <tr>
+                                    <td><i class="bi bi-bank"></i> Transferencia:</td>
+                                    <td class="text-end"><strong>${{ cierre.total_transferencia|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="bi bi-wallet2"></i> Mercado Pago:</td>
+                                    <td class="text-end"><strong>${{ cierre.total_mercado_pago|floatformat:2 }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        {{ form.observaciones }}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-save"></i> Guardar Cierre
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Ventas del Día</h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                {% if ventas_dia %}
+                    {% for venta in ventas_dia %}
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>#{{ venta.id }}</strong><br>
+                                <small class="text-muted">{{ venta.fecha|date:"H:i" }}</small>
+                            </div>
+                            <div class="text-end">
+                                <strong>${{ venta.total|floatformat:2 }}</strong><br>
+                                <small class="badge bg-primary">{{ venta.get_metodo_pago_display }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">No hay ventas registradas hoy</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

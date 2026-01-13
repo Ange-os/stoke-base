@@ -3,7 +3,7 @@ from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import ValidationError
 from django import forms
-from .models import Producto, Venta, Categoria
+from .models import Producto, Venta, Categoria, DetalleVenta, CierreCaja
 
 
 @admin.register(Categoria)
@@ -31,14 +31,14 @@ class CategoriaAdmin(admin.ModelAdmin):
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'precio', 'stock', 'categoria', 'fecha_actualizacion']
-    list_filter = ['categoria', 'fecha_creacion']
-    search_fields = ['nombre']
+    list_display = ['nombre', 'codigo_barras', 'precio', 'stock', 'categoria', 'tamaño', 'activo']
+    list_filter = ['categoria', 'activo', 'fecha_creacion']
+    search_fields = ['nombre', 'codigo_barras']
     readonly_fields = ['fecha_creacion', 'fecha_actualizacion']
     
     fieldsets = (
         ('Información del Producto', {
-            'fields': ('nombre', 'categoria')
+            'fields': ('nombre', 'codigo_barras', 'categoria', 'tamaño', 'activo')
         }),
         ('Precio y Stock', {
             'fields': ('precio', 'stock')
@@ -66,69 +66,98 @@ class ProductoAdmin(admin.ModelAdmin):
         return request.user.is_staff
 
 
-class VentaAdminForm(forms.ModelForm):
-    """Formulario personalizado para validar ventas"""
-    class Meta:
-        model = Venta
-        fields = '__all__'
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        producto = cleaned_data.get('producto')
-        cantidad = cleaned_data.get('cantidad')
-        
-        if producto and cantidad:
-            if cantidad <= 0:
-                raise ValidationError({'cantidad': 'La cantidad debe ser mayor a 0'})
-            
-            if producto.stock < cantidad:
-                raise ValidationError({
-                    'cantidad': f'Stock insuficiente. Disponible: {producto.stock}, Solicitado: {cantidad}'
-                })
-        
-        return cleaned_data
+class DetalleVentaInline(admin.TabularInline):
+    """Inline para ver detalles de venta"""
+    model = DetalleVenta
+    readonly_fields = ['producto', 'cantidad', 'precio_unitario', 'subtotal']
+    extra = 0
+    can_delete = False
 
 
 @admin.register(Venta)
 class VentaAdmin(admin.ModelAdmin):
-    form = VentaAdminForm
-    list_display = ['id', 'fecha', 'usuario', 'producto', 'cantidad', 'total']
-    list_filter = ['fecha', 'usuario', 'producto']
-    search_fields = ['producto__nombre', 'usuario__username']
+    list_display = ['id', 'fecha', 'usuario', 'metodo_pago', 'total', 'vuelto']
+    list_filter = ['fecha', 'metodo_pago', 'usuario']
+    search_fields = ['usuario__username', 'id']
     date_hierarchy = 'fecha'
+    readonly_fields = ['fecha', 'total', 'vuelto']
+    inlines = [DetalleVentaInline]
     
     fieldsets = (
         ('Información de la Venta', {
-            'fields': ('fecha', 'usuario', 'producto', 'cantidad', 'total')
+            'fields': ('fecha', 'usuario', 'metodo_pago', 'total')
+        }),
+        ('Pago', {
+            'fields': ('monto_recibido', 'vuelto', 'recargo_tarjeta')
+        }),
+        ('Observaciones', {
+            'fields': ('observaciones',),
+            'classes': ('collapse',)
         }),
     )
     
-    def get_readonly_fields(self, request, obj=None):
-        """Campos de solo lectura según el usuario"""
-        if obj:  # Si la venta ya existe
-            # Una vez creada, solo se puede ver (no modificar)
-            return ['fecha', 'usuario', 'producto', 'cantidad', 'total']
-        else:  # Al crear nueva venta
-            # El usuario se asigna automáticamente, fecha y total son calculados
-            if request.user.is_superuser:
-                return ['fecha', 'total']
-            else:
-                return ['fecha', 'usuario', 'total']
-    
-    def save_model(self, request, obj, form, change):
-        """Asignar usuario automáticamente al crear venta"""
-        if not change:  # Si es una nueva venta
-            obj.usuario = request.user
-        super().save_model(request, obj, form, change)
+    def has_add_permission(self, request):
+        """Las ventas se crean desde la interfaz de ventas"""
+        return False
     
     def has_change_permission(self, request, obj=None):
-        """Nadie puede modificar ventas una vez creadas"""
-        if obj:  # Si la venta ya existe
-            return False
-        return True  # Pueden crear nuevas ventas
+        """Las ventas no se pueden modificar"""
+        return False
     
     def has_delete_permission(self, request, obj=None):
-        """Solo los administradores pueden eliminar ventas"""
+        """Solo los superusuarios pueden eliminar ventas"""
+        return request.user.is_superuser
+
+
+@admin.register(DetalleVenta)
+class DetalleVentaAdmin(admin.ModelAdmin):
+    list_display = ['id', 'venta', 'producto', 'cantidad', 'precio_unitario', 'subtotal']
+    list_filter = ['venta__fecha', 'producto']
+    search_fields = ['producto__nombre', 'venta__id']
+    readonly_fields = ['venta', 'producto', 'cantidad', 'precio_unitario', 'subtotal']
+    
+    def has_add_permission(self, request):
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(CierreCaja)
+class CierreCajaAdmin(admin.ModelAdmin):
+    list_display = ['fecha', 'usuario', 'total_ventas', 'cantidad_ventas', 'diferencia']
+    list_filter = ['fecha', 'usuario']
+    search_fields = ['usuario__username']
+    readonly_fields = ['fecha', 'fecha_hora_cierre', 'total_ventas', 'cantidad_ventas', 
+                       'total_efectivo', 'total_tarjeta_debito', 'total_tarjeta_credito',
+                       'total_transferencia', 'total_mercado_pago', 'diferencia']
+    
+    fieldsets = (
+        ('Información', {
+            'fields': ('fecha', 'usuario', 'fecha_hora_cierre')
+        }),
+        ('Dinero en Caja', {
+            'fields': ('dinero_inicial', 'dinero_final', 'diferencia')
+        }),
+        ('Totales por Método de Pago', {
+            'fields': ('total_efectivo', 'total_tarjeta_debito', 'total_tarjeta_credito',
+                      'total_transferencia', 'total_mercado_pago')
+        }),
+        ('Resumen', {
+            'fields': ('total_ventas', 'cantidad_ventas')
+        }),
+        ('Observaciones', {
+            'fields': ('observaciones',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        """Los cierres se crean desde la interfaz de cierre de caja"""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Solo superusuarios pueden modificar cierres"""
         return request.user.is_superuser
 
 

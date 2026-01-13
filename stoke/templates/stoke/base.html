@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Ventas - Kiosco{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .btn-venta {
+            font-size: 2rem;
+            padding: 1.5rem;
+            font-weight: bold;
+        }
+        .display-venta {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .producto-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .producto-item:hover {
+            background-color: #e9ecef;
+        }
+        .carrito-item {
+            border-bottom: 1px solid #dee2e6;
+            padding: 0.5rem 0;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'stoke:ventas' %}">
+                <i class="bi bi-shop"></i> Sistema de Ventas
+            </a>
+            <div class="navbar-nav flex-row">
+                <a class="nav-link text-white me-3" href="{% url 'stoke:ventas' %}">
+                    <i class="bi bi-cart"></i> Ventas
+                </a>
+                <a class="nav-link text-white me-3" href="{% url 'stoke:cierre_caja' %}">
+                    <i class="bi bi-cash-coin"></i> Cierre
+                </a>
+                <a class="nav-link text-white me-3" href="{% url 'stoke:historial_ventas' %}">
+                    <i class="bi bi-clock-history"></i> Historial
+                </a>
+                {% if user.is_superuser %}
+                <a class="nav-link text-white me-3" href="{% url 'stoke:cargar_csv' %}">
+                    <i class="bi bi-upload"></i> Cargar CSV
+                </a>
+                {% endif %}
+                <a class="nav-link text-white" href="{% url 'admin:index' %}">
+                    <i class="bi bi-gear"></i> Admin
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
