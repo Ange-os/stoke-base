@@ -123,36 +123,6 @@
                     </button>
                 </div>
             </div>
-            
-            <!-- Lista de productos recientes -->
-            <h5 class="mt-4">Productos Disponibles</h5>
-            <div class="list-group" style="max-height: 300px; overflow-y: auto;">
-                {% if productos %}
-                    {% for producto in productos %}
-                    <a href="#" 
-                       class="list-group-item list-group-item-action producto-item" 
-                       data-producto-id="{{ producto.id }}"
-                       data-producto-nombre="{{ producto.nombre }}"
-                       data-producto-precio="{{ producto.precio }}"
-                       data-producto-stock="{{ producto.stock }}">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">{{ producto.nombre }}</h6>
-                            <strong>${{ producto.precio }}</strong>
-                        </div>
-                        {% if producto.tamaño %}
-                        <small class="text-muted">{{ producto.tamaño }}</small>
-                        {% endif %}
-                        <small class="text-muted">Stock: {{ producto.stock }}</small>
-                    </a>
-                    {% endfor %}
-                {% else %}
-                    <div class="list-group-item text-muted text-center">
-                        <i class="bi bi-info-circle"></i><br>
-                        No hay productos cargados<br>
-                        <small>Usa "Venta Manual" para probar</small>
-                    </div>
-                {% endif %}
-            </div>
         </div>
     </div>
     
